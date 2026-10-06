@@ -1,7 +1,7 @@
 /* 
  * CS:APP Data Lab 
  * 
- * <Please put your name and userid here>
+ * <Please put your name and userid here>陈思源 3070254799
  * 
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
@@ -146,7 +146,7 @@ NOTES:
  *   Rating: 1
  */
 int signMask(void) {
-  return 1;
+  return 1<<31;
 }
 
 // P2
@@ -158,7 +158,7 @@ int signMask(void) {
  *   Rating: 2
  */
 int bitXor(int x, int y) {
-	return 2;
+	return ~(~x&~y)&~(x&y);
 }
 
 // P3
@@ -170,7 +170,8 @@ int bitXor(int x, int y) {
  *   Rating: 3
  */
 int negativePart(int x){
-  return 3;
+  int mask=x>>31;
+  return mask&(~x+1);
 }
 
 
@@ -185,7 +186,11 @@ int negativePart(int x){
  *   Rating: 4
  */
 int copyByteWithin(int x, int src, int dst) {
-  return 4;
+  int src_shift = src << 3;
+  int dst_shift = dst << 3;
+  int byte = (x >> src_shift) & 0xFF;
+  int clear_mask = ~(0xFF << dst_shift);
+  return (x & clear_mask) | (byte << dst_shift);
 }
 
 // P5
@@ -198,7 +203,8 @@ int copyByteWithin(int x, int src, int dst) {
  *   Rating: 4
  */
 int logicalShift(int x, int n) {
-  return 5;
+  int mask = ~(((1 << 31) >> n) << 1);
+  return (x >> n) & mask;
 }
 
 // P6
@@ -210,7 +216,10 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int swapNibblePairs(int x) {
-  return 6;
+  int mask = 0x0F;
+  mask = mask | (mask << 8);
+  mask = mask | (mask << 16);
+  return ((x & mask) << 4) | ((x >> 4) & mask);
 }
 
 // P7
@@ -223,7 +232,9 @@ int swapNibblePairs(int x) {
  *   Rating: 4
  */
 int secondLowestZeroBit(int x) {
-  return 7;
+  int y = x | (x + 1);
+  int z = ~y;
+  return z & (~z + 1);
 }
 
 // P8
@@ -236,7 +247,12 @@ int secondLowestZeroBit(int x) {
  *   Rating: 5
  */
 int oddParity(int x) {
-  return 8;
+  x = x ^ (x >> 16);
+  x = x ^ (x >> 8);
+  x = x ^ (x >> 4);
+  x = x ^ (x >> 2);
+  x = x ^ (x >> 1);
+  return !(x & 1);
 }
 
 // P9
@@ -249,7 +265,10 @@ int oddParity(int x) {
  *   Rating: 5
  */
 int rotateRightBits(int x, int n) {
-  return 9;
+  int n_mod = n & 31;
+  int left_shift = (~n_mod + 1) & 31;
+  int mask = ~(((1 << 31) >> n_mod) << 1);
+  return ((x >> n_mod) & mask) | (x << left_shift);
 }
 
 // P10
@@ -264,7 +283,12 @@ int rotateRightBits(int x, int n) {
  *   Rating: 5
  */
 int roundEvenPow2(int x, int n) {
-  return 10;
+  int d = 1 << n;
+  int half = d >> 1;
+  int q = x >> n;
+  int odd = q & 1;
+  int bias = half + ~0 + odd;
+  return ((x + bias) >> n) << n;
 }
 
 // P11
@@ -280,7 +304,19 @@ int roundEvenPow2(int x, int n) {
  *   Rating: 5
  */
 int midpointTowardFirst(int x, int y) {
-  return 11;
+  int xor_xy = x ^ y;
+  int base = (x & y) + (xor_xy >> 1);
+  
+  int odd = xor_xy & 1;
+  
+  int sx = x >> 31;             
+  int sy = y >> 31;              
+  int same_sign = ~(sx ^ sy);    
+  int diff = x + (~y + 1);       
+  int diff_sign = diff >> 31;    
+  int gt = ((same_sign & ~diff_sign) | (~same_sign & ~sx)) & 1;
+  
+  return base + (gt & odd);
 }
 
 
@@ -294,7 +330,19 @@ int midpointTowardFirst(int x, int y) {
  *   Rating: 7
  */
 int isBetweenEitherOrder(int x, int a, int b) {
-  return 12;
+  int xma = x + ~a + 1;
+  int x_ge_a = ~((xma ^ ((x ^ a) & (xma ^ x))) >> 31);
+
+  int xmb = x + ~b + 1;
+  int x_ge_b = ~((xmb ^ ((x ^ b) & (xmb ^ x))) >> 31);
+
+  int amx = a + ~x + 1;
+  int a_ge_x = ~((amx ^ ((a ^ x) & (amx ^ a))) >> 31);
+
+  int bmx = b + ~x + 1;
+  int b_ge_x = ~((bmx ^ ((b ^ x) & (bmx ^ b))) >> 31);
+
+  return ((x_ge_a & b_ge_x) | (x_ge_b & a_ge_x)) & 1;
 }
 
 // P13
@@ -307,7 +355,23 @@ int isBetweenEitherOrder(int x, int a, int b) {
  *   Rating: 7
  */
 int mul5Sat(int x) {
-  return 13;
+  int x4 = x << 2;
+  int result = x4 + x;
+  
+  int diff_x4 = (x4 >> 2) ^ x;
+  int ovf_x4 = !!diff_x4;
+  
+  int same_sign = ~((x4 ^ x) >> 31);
+  int diff_sign = (result ^ x4) >> 31;
+  int ovf_add = !!(same_sign & diff_sign);
+  
+  int ovf = ovf_x4 | ovf_add;
+  
+  int mask = (ovf << 31) >> 31;
+  
+  int sat = (x >> 31) ^ ~(1 << 31);
+  
+  return (result & ~mask) | (sat & mask);
 }
 
 // P14
@@ -320,7 +384,27 @@ int mul5Sat(int x) {
  *   Rating: 7
  */
 int classifyAdd3(int x, int y, int z) {
-  return 14;
+  int hx = x >> 31;
+  int hy = y >> 31;
+  int hz = z >> 31;
+
+  int s1 = x + y;
+  int c1 = (((x & y) | ((x | y) & ~s1)) >> 31) & 1;
+  int h1 = hx + hy + c1;
+
+  int s2 = s1 + z;
+  int c2 = (((s1 & z) | ((s1 | z) & ~s2)) >> 31) & 1;
+  int h2 = h1 + hz + c2;
+
+  int sign_s2 = s2 >> 31;
+
+  int ovf = h2 ^ sign_s2;
+  int is_ovf = !!ovf;
+
+  int ret = (h2 >> 31) | 1;
+
+  int mask = is_ovf << 31 >> 31;
+  return ret & mask;
 }
 
 // P15
@@ -337,7 +421,72 @@ int classifyAdd3(int x, int y, int z) {
  *   Rating: 7
  */
 unsigned floatScaleThreeHalves(unsigned uf) {
-  return 15;
+  unsigned s = uf & 0x80000000;
+    unsigned e = (uf >> 23) & 0xFF;
+    unsigned m = uf & 0x7FFFFF;
+
+    if (e == 0xFF) {
+        return uf;
+    }
+    if (e == 0 && m == 0) {
+        return uf;
+    }
+
+    unsigned significand;
+    int E; 
+    if (e == 0) {
+        significand = m;
+        E = -149;
+    } else {
+        significand = (1 << 23) | m;
+        E = e - 127;
+    }
+
+    unsigned prod = significand * 3;
+
+    int p = 31;
+    while (p >= 0 && !(prod & (1u << p))) {
+        p--;
+    }
+
+    int e_new;
+    if (e == 0) {
+        e_new = p - 23;
+    } else {
+        e_new = p + E + 103;
+    }
+
+    if (e_new >= 255) {
+        return s | 0x7F800000;
+    }
+
+    if (e_new <= 0) {
+        unsigned m_new = prod >> 1;
+        if ((prod & 1) && (m_new & 1)) {
+            m_new++;
+        }
+        if (m_new >= (1 << 23)) {
+            return s | (1 << 23); 
+        }
+        return s | m_new;
+    } else {
+        int shift = p - 23;
+        unsigned sig = prod >> shift;
+        unsigned dropped = prod & ((1u << shift) - 1);
+        unsigned half = 1u << (shift - 1);
+        if (dropped > half || (dropped == half && (sig & 1))) {
+            sig++;
+            if (sig == (1u << 24)) {
+                sig >>= 1;
+                e_new++;
+                if (e_new >= 255) {
+                    return s | 0x7F800000;
+                }
+            }
+        }
+        unsigned m_new = sig & 0x7FFFFF;
+        return s | (e_new << 23) | m_new;
+    }
 }
 
 // P16
@@ -353,7 +502,76 @@ unsigned floatScaleThreeHalves(unsigned uf) {
  *   Rating: 10
  */
 unsigned floatRoundEven(unsigned uf) {
-  return 16;
+  unsigned s = uf & 0x80000000;
+    unsigned e = (uf >> 23) & 0xFF;
+    unsigned m = uf & 0x7FFFFF;
+
+    /* NaN 或无穷大，直接返回 */
+    if (e == 0xFF) {
+        return uf;
+    }
+    /* ±0，直接返回，保留符号 */
+    if (e == 0 && m == 0) {
+        return uf;
+    }
+
+    /* 非规格化数：绝对值 < 0.5，舍入到 0 */
+    if (e == 0) {
+        return s;
+    }
+
+    /* e < 126：绝对值 < 0.5，舍入到 0 */
+    if (e < 126) {
+        return s;
+    }
+
+    /* e == 126：值在 [0.5, 1) 之间 */
+    if (e == 126) {
+        if (m == 0) {
+            /* 正好 0.5，舍入到偶数 0 */
+            return s;
+        } else {
+            /* > 0.5，舍入到 1 */
+            return s | (127 << 23);  /* 1.0 的浮点表示：阶码 127，尾数 0 */
+        }
+    }
+
+    /* e >= 150：数值已经是整数，直接返回 */
+    if (e >= 150) {
+        return uf;
+    }
+
+    /* 127 <= e < 150：有小数部分，需要舍入 */
+    int shift = 150 - e;               /* 需要右移的位数，1 到 23 */
+    unsigned sig = (1 << 23) | m;      /* 包含隐含 1 的有效数字，24 位 */
+    unsigned int_part = sig >> shift;  /* 整数部分 */
+    unsigned frac = sig & ((1 << shift) - 1); /* 小数部分 */
+    unsigned half = 1 << (shift - 1);  /* 中点值 */
+
+    /* round-to-nearest-even */
+    if (frac > half || (frac == half && (int_part & 1))) {
+        int_part++;
+    }
+
+    /* 如果舍入后为 0（理论上不会发生，但保留） */
+    if (int_part == 0) {
+        return s;
+    }
+
+    /* 将整数 int_part 转换回单精度浮点数 */
+    int p = 31;
+    while (p >= 0 && !(int_part & (1u << p))) {
+        p--;
+    }
+    unsigned e_new = p + 127;          /* 新的阶码 */
+    unsigned m_new;
+    if (p <= 23) {
+        m_new = (int_part & ((1 << p) - 1)) << (23 - p);
+    } else {
+        /* 理论上不会发生，但为了安全处理 */
+        m_new = (int_part >> (p - 23)) & 0x7FFFFF;
+    }
+    return s | (e_new << 23) | m_new;
 }
 
 // P17
@@ -367,7 +585,45 @@ unsigned floatRoundEven(unsigned uf) {
  *   Rating: 10
  */
 unsigned float_i2f(int x) {
-  return 17;
+  if (x == 0) return 0;
+
+    unsigned s = x & 0x80000000;   // 符号位
+    unsigned u;
+    if (x < 0) {
+        u = ~x + 1;                // 取绝对值，隐式转换为 unsigned
+    } else {
+        u = x;                     // 隐式转换为 unsigned
+    }
+
+    // 找最高位位置 p
+    int p = 31;
+    while (p >= 0 && !(u & (1u << p))) {
+        p--;
+    }
+
+    unsigned e = p + 127;
+    unsigned m;
+
+    if (p <= 23) {
+        m = (u << (23 - p)) & 0x7FFFFF;
+    } else {
+        int shift = p - 23;
+        unsigned sig = u >> shift;
+        unsigned dropped = u & ((1u << shift) - 1);
+        unsigned half = 1u << (shift - 1);
+
+        // round-to-nearest-even
+        if (dropped > half || (dropped == half && (sig & 1))) {
+            sig++;
+            if (sig == (1u << 24)) {
+                sig >>= 1;
+                e++;
+            }
+        }
+        m = sig & 0x7FFFFF;
+    }
+
+    return s | (e << 23) | m;
 }
 
 
@@ -381,7 +637,32 @@ unsigned float_i2f(int x) {
  *   Rating: 10
  */
 int bitCount(int x) {
-  return 18;
+  /* 构造掩码 0x55555555：每个 2 位中的低位为 1 */
+  int mask1 = 0x55 | (0x55 << 8);
+  mask1 = mask1 | (mask1 << 16);
+
+  /* 构造掩码 0x33333333：每个 4 位中的低 2 位为 1 */
+  int mask2 = 0x33 | (0x33 << 8);
+  mask2 = mask2 | (mask2 << 16);
+
+  /* 构造掩码 0x0F0F0F0F：每个 8 位中的低 4 位为 1 */
+  int mask4 = 0x0F | (0x0F << 8);
+  mask4 = mask4 | (mask4 << 16);
+
+  /* 构造掩码 0x00FF00FF：每 16 位中的低 8 位为 1 */
+  int mask8 = 0xFF | (0xFF << 16);
+
+  /* 构造掩码 0x0000FFFF：低 16 位为 1 */
+  int mask16 = 0xFF | (0xFF << 8);
+
+  /* 分治合并 */
+  int y = (x & mask1) + ((x >> 1) & mask1);       // 每 2 位一组计数
+  y = (y & mask2) + ((y >> 2) & mask2);           // 每 4 位一组计数
+  y = (y & mask4) + ((y >> 4) & mask4);           // 每 8 位一组计数
+  y = (y & mask8) + ((y >> 8) & mask8);           // 每 16 位一组计数
+  y = (y & mask16) + ((y >> 16) & mask16);        // 合并高低 16 位
+
+  return y;
 }
 
 // P19
@@ -395,5 +676,34 @@ int bitCount(int x) {
  */
 int bitReverse(int x)
 {
-  return 19;
+  /* 构造掩码 0x55555555：每 2 位中的低位为 1 */
+    int m1 = 0x55 | (0x55 << 8);
+    m1 = m1 | (m1 << 16);
+
+    /* 构造掩码 0x33333333：每 4 位中的低 2 位为 1 */
+    int m2 = 0x33 | (0x33 << 8);
+    m2 = m2 | (m2 << 16);
+
+    /* 构造掩码 0x0F0F0F0F：每 8 位中的低 4 位为 1 */
+    int m4 = 0x0F | (0x0F << 8);
+    m4 = m4 | (m4 << 16);
+
+    /* 构造掩码 0x00FF00FF：每 16 位中的低 8 位为 1 */
+    int m8 = 0xFF | (0xFF << 16);
+
+    /* 构造掩码 0x0000FFFF：低 16 位为 1 */
+    int m16 = 0xFF | (0xFF << 8);
+
+    /* 交换相邻的 1 位 */
+    x = ((x >> 1) & m1) | ((x & m1) << 1);
+    /* 交换相邻的 2 位 */
+    x = ((x >> 2) & m2) | ((x & m2) << 2);
+    /* 交换相邻的 4 位 */
+    x = ((x >> 4) & m4) | ((x & m4) << 4);
+    /* 交换相邻的 8 位 */
+    x = ((x >> 8) & m8) | ((x & m8) << 8);
+    /* 交换相邻的 16 位 */
+    x = ((x >> 16) & m16) | ((x & m16) << 16);
+
+    return x;
 }
